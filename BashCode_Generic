@@ -1,0 +1,22 @@
+start_keyword=".subckt"
+end_keyword=".ends"
+input_file="netlist"
+output_file="output"
+
+extracting=false
+
+while IFS= read -r line; do
+    if [[ $line == *"$start_keyword"* ]]; then
+        extracting=true
+        echo "$line" >> "$output_file"
+    elif [[ $line == *"$end_keyword"* ]]; then
+        extracting=false
+        echo "$line" >> "$output_file"
+    elif [[ $extracting == true ]]; then
+        line=${line//nf=1/nf=2}
+        line=${line//nmos/n}
+        line=${line//pmos/p}
+        echo "$line" >> "$output_file"
+    fi
+done < "$input_file"
+

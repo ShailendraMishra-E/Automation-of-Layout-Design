@@ -1,0 +1,47 @@
+procedure(theNetlistGenerator(lib_name cell_name view_name)
+	simulator('hspiceD)
+	design(lib_name cell_name view_name)
+	createNetlist( ?recreateAll t)
+)
+
+
+procedure(theFeedOfNetlist(cell_name)
+	n=outfile("n.txt")
+	fprintf(n "%s" cell_name)
+	close(n)
+	sh("cellname=$(cat n.txt); rm n.txt; user=$(whoami); cp /data/$user/simulation/$cellname/hspiceD/schematic/netlist/netlist $HOME/source/netlist; cd ~/source; ./BashCode; rm netlist; mkdir $HOME/source/$cellname; ext=\".sp\"; name=\"$cellname$ext\"; mv $HOME/source/output $HOME/source/$cellname/$name; source $HOME/ALIGN-public/general/bin/activate; export LD_LIBRARY_PATH=${LD_LIBRARY_PATH}:$HOME/ALIGN-public/general/lib; schematic2layout.py $HOME/source/$cellname/ -p $HOME/ALIGN-public/pdks/Bulk65nm_Mock_PDK/")
+)
+
+
+procedure(theStreamImporter(lib_name stream_file layer_file)
+	xstInSetField("strmFile" stream_file)
+	xstInSetField("library" lib_name)
+	xstInSetField("layerMap" layer_file)
+	xstInDoTranslate()
+)
+
+
+procedure(theLayoutOpener(lib_name ncell_name)
+	full_name = strcat(ncell_name "_0")
+	geOpen(?lib lib_name ?cell full_name ?view "layout" ?mode "a")
+)
+
+
+procedure(s2l()
+	lib_name=geGetEditCellView()~>libName
+	cell_name=geGetEditCellView()~>cellName
+	view_name=geGetEditCellView()~>viewName
+	theNetlistGenerator(lib_name cell_name view_name)
+	theFeedOfNetlist(cell_name)
+	ncell_name=upperCase(cell_name)
+	sh("echo $HOME > read.txt")
+	sh("echo -n $(tr -d \"\n\" < read.txt) > read.txt")
+	r=infile("read.txt")
+	gets(home r)
+	close(r)
+	stream_file=strcat(home "/source/" ncell_name "_0.gds")
+	layer_file=strcat(home "/source/file.layermap") 
+	theStreamImporter(lib_name stream_file layer_file)
+	theLayoutOpener(lib_name ncell_name)
+)
+
